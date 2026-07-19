@@ -1,0 +1,14 @@
+from fastapi import APIRouter
+
+from backend.app.api import health
+from backend.app.api import schema as schema_routes
+
+
+api_router = APIRouter()
+
+api_router.include_router(health.router)
+
+api_router.include_router(
+    schema_routes.router,
+    prefix="/v1",
+)

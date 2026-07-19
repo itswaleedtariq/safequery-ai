@@ -1,19 +1,20 @@
 from fastapi import FastAPI
 
+from backend.app.api.router import api_router
+from backend.app.core.config import get_settings
+
+
+settings = get_settings()
+
+
 app = FastAPI(
-    title="SafeQuery AI",
+    title=settings.app_name,
     description=(
         "Secure natural-language-to-SQL analytics platform with "
         "guardrails and hallucination detection."
     ),
-    version="0.1.0",
+    version="0.3.0",
 )
 
 
-@app.get("/health")
-def health_check() -> dict[str, str]:
-    """Return the current health status of the API."""
-    return {
-        "status": "healthy",
-        "project": "SafeQuery AI",
-    }
+app.include_router(api_router)
