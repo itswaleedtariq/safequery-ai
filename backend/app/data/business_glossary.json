@@ -1,0 +1,107 @@
+[
+  {
+    "term": "revenue",
+    "aliases": [
+      "sales revenue",
+      "sales",
+      "income"
+    ],
+    "definition": "Revenue is the sum of order_items.line_total for orders whose status is completed or shipped. Pending and cancelled orders are excluded.",
+    "tables": [
+      "orders",
+      "order_items"
+    ],
+    "columns": [
+      "orders.status",
+      "order_items.line_total"
+    ]
+  },
+  {
+    "term": "order value",
+    "aliases": [
+      "average order value",
+      "aov",
+      "order amount"
+    ],
+    "definition": "Order value is stored in orders.total_amount and represents the sum of all item line totals belonging to the order.",
+    "tables": [
+      "orders"
+    ],
+    "columns": [
+      "orders.total_amount"
+    ]
+  },
+  {
+    "term": "customer city",
+    "aliases": [
+      "home city",
+      "customer location"
+    ],
+    "definition": "Customer city means the customer's home city stored in customers.city.",
+    "tables": [
+      "customers"
+    ],
+    "columns": [
+      "customers.city"
+    ]
+  },
+  {
+    "term": "shipping city",
+    "aliases": [
+      "delivery city",
+      "destination city"
+    ],
+    "definition": "Shipping city means the destination of an order and is stored in orders.shipping_city.",
+    "tables": [
+      "orders"
+    ],
+    "columns": [
+      "orders.shipping_city"
+    ]
+  },
+  {
+    "term": "successful payment",
+    "aliases": [
+      "completed payment",
+      "paid order"
+    ],
+    "definition": "A successful payment is a payment whose status is completed.",
+    "tables": [
+      "payments"
+    ],
+    "columns": [
+      "payments.status"
+    ]
+  },
+  {
+    "term": "active product",
+    "aliases": [
+      "available product",
+      "currently available product"
+    ],
+    "definition": "An active product is a product whose products.active value is true.",
+    "tables": [
+      "products"
+    ],
+    "columns": [
+      "products.active"
+    ]
+  },
+  {
+    "term": "historical product price",
+    "aliases": [
+      "sale price",
+      "sold price",
+      "price at order time"
+    ],
+    "definition": "Historical product price is stored in order_items.unit_price. products.price is only the current catalog price.",
+    "tables": [
+      "products",
+      "order_items"
+    ],
+    "columns": [
+      "products.price",
+      "order_items.unit_price"
+    ]
+  }
+]

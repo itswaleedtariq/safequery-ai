@@ -13,7 +13,7 @@ app = FastAPI(
         "Secure natural-language-to-SQL analytics platform with "
         "guardrails and hallucination detection."
     ),
-    version="0.3.0",
+    version="0.4.0",
 )
 
 
