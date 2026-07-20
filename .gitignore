@@ -35,3 +35,7 @@ logs/
 # Frontend
 node_modules/
 dist/
+
+# Runtime audit logs
+logs/
+*.log

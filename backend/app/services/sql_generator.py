@@ -1,6 +1,7 @@
 import json
 from functools import lru_cache
 from time import perf_counter
+
 from groq import Groq
 from pydantic import ValidationError
 
@@ -9,12 +10,16 @@ from backend.app.core.exceptions import (
     LLMConfigurationError,
     LLMResponseError,
 )
+from backend.app.guardrails.sql_validator import validate_sql
 from backend.app.schemas.prompt_context import PromptPreviewRequest
 from backend.app.schemas.sql_generation import (
     SQLGenerationPayload,
     SQLGenerationRequest,
     SQLGenerationResponse,
     TokenUsage,
+)
+from backend.app.schemas.sql_guardrails import (
+    SQLValidationRequest,
 )
 from backend.app.services.prompt_builder import build_prompt_preview
 from backend.app.services.structured_output_schema import (
@@ -30,7 +35,7 @@ def get_groq_client() -> Groq:
     """
     Create and cache the Groq client.
 
-    The client is created only after confirming that an API key exists.
+    The client is created only when a Groq API key is configured.
     """
 
     if not settings.groq_api_key.strip():
@@ -49,7 +54,7 @@ def parse_generation_content(
     content: str,
 ) -> SQLGenerationPayload:
     """
-    Parse and validate the JSON content returned by Groq.
+    Parse and validate the structured JSON returned by Groq.
     """
 
     if not content or not content.strip():
@@ -66,7 +71,9 @@ def parse_generation_content(
         ) from error
 
     try:
-        return SQLGenerationPayload.model_validate(raw_payload)
+        return SQLGenerationPayload.model_validate(
+            raw_payload
+        )
 
     except ValidationError as error:
         raise LLMResponseError(
@@ -78,33 +85,46 @@ def _get_usage(
     completion: object,
 ) -> TokenUsage:
     """
-    Extract token counts without failing when usage is unavailable.
+    Extract token usage information from the Groq response.
+
+    Empty token counts are returned when usage information is not
+    available.
     """
 
-    usage = getattr(completion, "usage", None)
+    usage = getattr(
+        completion,
+        "usage",
+        None,
+    )
 
     if usage is None:
         return TokenUsage()
 
     return TokenUsage(
-        prompt_tokens=getattr(
-            usage,
-            "prompt_tokens",
-            0,
-        )
-        or 0,
-        completion_tokens=getattr(
-            usage,
-            "completion_tokens",
-            0,
-        )
-        or 0,
-        total_tokens=getattr(
-            usage,
-            "total_tokens",
-            0,
-        )
-        or 0,
+        prompt_tokens=(
+            getattr(
+                usage,
+                "prompt_tokens",
+                0,
+            )
+            or 0
+        ),
+        completion_tokens=(
+            getattr(
+                usage,
+                "completion_tokens",
+                0,
+            )
+            or 0
+        ),
+        total_tokens=(
+            getattr(
+                usage,
+                "total_tokens",
+                0,
+            )
+            or 0
+        ),
     )
 
 
@@ -115,10 +135,10 @@ def _build_local_clarification_response(
     clarification_options: list[str],
 ) -> SQLGenerationResponse:
     """
-    Return clarification without calling Groq.
+    Return a clarification response without calling Groq.
 
-    This reduces cost and prevents the model from guessing when the
-    local ambiguity detector already identified the problem.
+    This prevents the LLM from guessing when local ambiguity detection
+    has already identified multiple possible interpretations.
     """
 
     options_text = " ".join(
@@ -132,7 +152,8 @@ def _build_local_clarification_response(
 
     if options_text:
         clarification_question = (
-            f"{clarification_question} {options_text}"
+            f"{clarification_question} "
+            f"{options_text}"
         )
 
     return SQLGenerationResponse(
@@ -152,6 +173,7 @@ def _build_local_clarification_response(
         model=None,
         latency_ms=0.0,
         token_usage=TokenUsage(),
+        guardrail=None,
     )
 
 
@@ -159,9 +181,10 @@ def generate_sql(
     request: SQLGenerationRequest,
 ) -> SQLGenerationResponse:
     """
-    Generate structured PostgreSQL through Groq.
+    Generate structured PostgreSQL using Groq.
 
-    This function does not execute the generated SQL.
+    Generated SQL is passed through the static guardrail but is not
+    executed against PostgreSQL.
     """
 
     prompt_preview = build_prompt_preview(
@@ -201,7 +224,8 @@ def generate_sql(
                 "content": (
                     "You are a precise PostgreSQL Text-to-SQL "
                     "engine. Follow the supplied schema and business "
-                    "definitions. Never invent schema objects."
+                    "definitions exactly. Never invent database "
+                    "tables, columns, relationships, or values."
                 ),
             },
             {
@@ -233,11 +257,22 @@ def generate_sql(
             "Groq returned no completion choices."
         )
 
-    message_content = completion.choices[0].message.content
+    message_content = (
+        completion.choices[0].message.content
+    )
 
     payload = parse_generation_content(
         message_content or ""
     )
+
+    guardrail_result = None
+
+    if payload.sql:
+        guardrail_result = validate_sql(
+            SQLValidationRequest(
+                sql=payload.sql
+            )
+        )
 
     return SQLGenerationResponse(
         question=request.question,
@@ -261,4 +296,5 @@ def generate_sql(
         ),
         latency_ms=latency_ms,
         token_usage=_get_usage(completion),
+        guardrail=guardrail_result,
     )

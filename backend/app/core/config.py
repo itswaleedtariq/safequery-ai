@@ -42,7 +42,31 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
+        
     )
+    # Query safety
+    max_result_rows: int = 1000
+    query_timeout_seconds: int = 10
+    min_confidence_score: float = 0.65
+
+    # Static SQL guardrails
+    max_sql_length: int = 20_000
+    max_subquery_depth: int = 3
+    block_sql_comments: bool = True
+
+    blocked_sql_functions: str = (
+        "pg_sleep,"
+        "pg_read_file,"
+        "pg_read_binary_file,"
+        "pg_ls_dir,"
+        "lo_import,"
+        "lo_export,"
+        "dblink,"
+        "dblink_exec"
+    )
+
+    guardrail_log_file: str = "logs/guardrails.log"
+    
 
 
 @lru_cache

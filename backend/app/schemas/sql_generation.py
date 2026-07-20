@@ -9,6 +9,9 @@ from pydantic import (
 
 from backend.app.schemas.prompt_context import PromptPreviewRequest
 
+from backend.app.schemas.sql_guardrails import (
+    SQLValidationResponse,
+)
 
 class SQLGenerationRequest(PromptPreviewRequest):
     """Request used to generate SQL from a business question."""
@@ -89,8 +92,13 @@ class SQLGenerationResponse(BaseModel):
     sql: str | None
     explanation: str
 
-    tables_used: list[str] = Field(default_factory=list)
-    columns_used: list[str] = Field(default_factory=list)
+    tables_used: list[str] = Field(
+        default_factory=list
+    )
+
+    columns_used: list[str] = Field(
+        default_factory=list
+    )
 
     confidence: float = Field(
         ge=0.0,
@@ -100,10 +108,14 @@ class SQLGenerationResponse(BaseModel):
     requires_clarification: bool
     clarification_question: str | None = None
 
-    selected_tables: list[str] = Field(default_factory=list)
+    selected_tables: list[str] = Field(
+        default_factory=list
+    )
 
     provider: Literal["groq", "local"]
     model: str | None = None
 
     latency_ms: float = Field(ge=0.0)
     token_usage: TokenUsage
+
+    guardrail: SQLValidationResponse | None = None
