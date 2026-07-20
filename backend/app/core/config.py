@@ -66,6 +66,14 @@ class Settings(BaseSettings):
     )
 
     guardrail_log_file: str = "logs/guardrails.log"
+    # Read-only PostgreSQL execution
+    readonly_database_url: str = ""
+
+    max_estimated_rows_scanned: int = 100_000
+    max_explain_total_cost: float = 100_000.0
+    lock_timeout_seconds: int = 2
+
+    query_audit_log_file: str = "logs/query_execution.log"
     
 
 

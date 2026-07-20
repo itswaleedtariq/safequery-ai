@@ -5,6 +5,9 @@ from backend.app.api import (
 )
 from backend.app.api import health
 from backend.app.api import prompt as prompt_routes
+from backend.app.api import (
+    query_execution as execution_routes,
+)
 from backend.app.api import schema as schema_routes
 from backend.app.api import (
     sql_generation as sql_generation_routes,
@@ -13,7 +16,9 @@ from backend.app.api import (
 
 api_router = APIRouter()
 
-api_router.include_router(health.router)
+api_router.include_router(
+    health.router
+)
 
 api_router.include_router(
     schema_routes.router,
@@ -32,5 +37,10 @@ api_router.include_router(
 
 api_router.include_router(
     guardrail_routes.router,
+    prefix="/v1",
+)
+
+api_router.include_router(
+    execution_routes.router,
     prefix="/v1",
 )

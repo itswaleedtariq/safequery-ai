@@ -1,0 +1,7 @@
+# Keep Linux and backend files consistent
+*.sh text eol=lf
+*.sql text eol=lf
+*.py text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.json text eol=lf

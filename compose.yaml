@@ -12,6 +12,9 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
 
+      READONLY_DB_USER: ${READONLY_DB_USER:-safequery_reader}
+      READONLY_DB_PASSWORD: ${READONLY_DB_PASSWORD:-safequery_reader_password}
+
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
 
