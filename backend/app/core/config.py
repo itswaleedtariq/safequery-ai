@@ -75,6 +75,13 @@ class Settings(BaseSettings):
 
     query_audit_log_file: str = "logs/query_execution.log"
     
+        # Hallucination detection
+    hallucination_alignment_threshold: float = 0.70
+    hallucination_schema_coverage_threshold: float = 0.60
+    max_result_null_ratio: float = 0.50
+    hallucination_max_completion_tokens: int = 1600
+    hallucination_log_file: str = "logs/hallucination.log"
+    
 
 
 @lru_cache

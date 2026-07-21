@@ -3,6 +3,9 @@ from fastapi import APIRouter
 from backend.app.api import (
     guardrails as guardrail_routes,
 )
+from backend.app.api import (
+    hallucination as hallucination_routes,
+)
 from backend.app.api import health
 from backend.app.api import prompt as prompt_routes
 from backend.app.api import (
@@ -42,5 +45,10 @@ api_router.include_router(
 
 api_router.include_router(
     execution_routes.router,
+    prefix="/v1",
+)
+
+api_router.include_router(
+    hallucination_routes.router,
     prefix="/v1",
 )

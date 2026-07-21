@@ -377,7 +377,8 @@ def execute_readonly_query(
                 )
 
                 row_limit_reached = (
-                    len(rows) >= effective_limit
+                    guardrail.limit_applied
+                    and len(rows) >= effective_limit
                 )
 
                 response = QueryExecutionResponse(
