@@ -445,6 +445,8 @@ def run_query_workflow(
             confidence
             .manual_review_recommended
         ),
+        confidence_signals=confidence.signals,
+        confidence_reasons=confidence.reasons,
         hallucination_detected=(
             confidence
             .hallucination

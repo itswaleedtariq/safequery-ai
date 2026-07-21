@@ -234,3 +234,52 @@ def test_count_question_requires_count() -> None:
     }
 
     assert "count_operation_missing" in issue_codes
+
+def test_revenue_status_filter_is_valid_business_rule() -> None:
+    back_translation = BackTranslationResult(
+        question_answered=(
+            "Which five products generated the highest "
+            "revenue from completed or shipped orders?"
+        ),
+        operation="sum",
+        metrics=["revenue"],
+        dimensions=["product"],
+        filters=[
+            "orders with completed or shipped status"
+        ],
+        grouping=["product"],
+        ordering=["revenue descending"],
+        limit=5,
+    )
+
+    alignment = AlignmentResult(
+        score=0.60,
+        verdict="misaligned",
+        matched_requirements=[
+            "top five products",
+            "highest revenue",
+        ],
+        missing_requirements=[],
+        extra_assumptions=[
+            "Only completed or shipped orders are included."
+        ],
+        explanation=(
+            "The original question did not explicitly "
+            "mention order statuses."
+        ),
+    )
+
+    normalized = (
+        detector._normalize_business_rule_alignment(
+            original_question=(
+                "Which five products generated the "
+                "highest revenue?"
+            ),
+            back_translation=back_translation,
+            alignment=alignment,
+        )
+    )
+
+    assert normalized.verdict == "aligned"
+    assert normalized.score >= 0.90
+    assert normalized.extra_assumptions == []    

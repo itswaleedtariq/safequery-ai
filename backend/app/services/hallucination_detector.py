@@ -186,7 +186,176 @@ def _parse_model_content(
         raise LLMResponseError(
             "Groq hallucination output failed validation."
         ) from error
+def _to_string_list(
+    value: Any,
+) -> list[str]:
+    """Convert optional Groq values into a clean string list."""
 
+    if value is None:
+        return []
+
+    if isinstance(value, list):
+        return [
+            str(item).strip()
+            for item in value
+            if str(item).strip()
+        ]
+
+    if isinstance(value, str):
+        cleaned = value.strip()
+
+        if not cleaned:
+            return []
+
+        return [cleaned]
+
+    return [str(value).strip()]
+
+
+def _normalize_alignment_verdict(
+    value: Any,
+    score: float,
+) -> str:
+    """Normalize common Groq verdict variations."""
+
+    normalized = (
+        str(value or "")
+        .strip()
+        .lower()
+        .replace("-", "_")
+        .replace(" ", "_")
+    )
+
+    aligned_values = {
+        "aligned",
+        "fully_aligned",
+        "highly_aligned",
+        "complete_alignment",
+        "correct",
+        "match",
+        "matched",
+    }
+
+    partial_values = {
+        "partially_aligned",
+        "partial_alignment",
+        "mostly_aligned",
+        "partially_correct",
+        "partial",
+    }
+
+    misaligned_values = {
+        "misaligned",
+        "not_aligned",
+        "incorrect",
+        "mismatch",
+        "mismatched",
+    }
+
+    if normalized in aligned_values:
+        return "aligned"
+
+    if normalized in partial_values:
+        return "partially_aligned"
+
+    if normalized in misaligned_values:
+        return "misaligned"
+
+    if "misalign" in normalized or "not_align" in normalized:
+        return "misaligned"
+
+    if "partial" in normalized:
+        return "partially_aligned"
+
+    if "align" in normalized or "match" in normalized:
+        return "aligned"
+
+    if score >= 0.80:
+        return "aligned"
+
+    if score >= 0.50:
+        return "partially_aligned"
+
+    return "misaligned"
+
+
+def _parse_alignment_content(
+    content: str,
+) -> AlignmentResult:
+    """Normalize and validate the Groq alignment response."""
+
+    if not content or not content.strip():
+        raise LLMResponseError(
+            "Groq returned an empty alignment response."
+        )
+
+    try:
+        payload = json.loads(content)
+
+    except json.JSONDecodeError as error:
+        raise LLMResponseError(
+            "Groq returned invalid alignment JSON."
+        ) from error
+
+    if not isinstance(payload, dict):
+        raise LLMResponseError(
+            "Groq alignment output must be a JSON object."
+        )
+
+    raw_score = payload.get("score", 0.0)
+
+    try:
+        score = float(raw_score)
+
+    except (TypeError, ValueError):
+        score = 0.0
+
+    # Accept either 0–1 or percentage-style 0–100 scores.
+    if 1.0 < score <= 100.0:
+        score = score / 100.0
+
+    score = max(
+        0.0,
+        min(1.0, score),
+    )
+
+    payload["score"] = score
+
+    payload["verdict"] = _normalize_alignment_verdict(
+        payload.get("verdict"),
+        score,
+    )
+
+    for field_name in (
+        "matched_requirements",
+        "missing_requirements",
+        "extra_assumptions",
+    ):
+        payload[field_name] = _to_string_list(
+            payload.get(field_name)
+        )
+
+    explanation = payload.get("explanation")
+
+    if explanation is None:
+        payload["explanation"] = (
+            "No alignment explanation was returned."
+        )
+    else:
+        payload["explanation"] = str(
+            explanation
+        ).strip()
+
+    try:
+        return AlignmentResult.model_validate(
+            payload
+        )
+
+    except ValidationError as error:
+        raise LLMResponseError(
+            "Groq alignment output failed validation: "
+            f"{error.errors()[0]['msg']}"
+        ) from error
 
 def _get_token_usage(
     completion: object,
@@ -340,7 +509,79 @@ SQL:
 
     return result, _get_token_usage(completion)
 
+def _normalize_business_rule_alignment(
+    *,
+    original_question: str,
+    back_translation: BackTranslationResult,
+    alignment: AlignmentResult,
+) -> AlignmentResult:
+    """
+    Prevent required business-definition filters from being treated
+    as unsupported assumptions.
+    """
 
+    lowered_question = original_question.lower()
+
+    revenue_requested = any(
+        term in lowered_question
+        for term in (
+            "revenue",
+            "sales",
+            "income",
+        )
+    )
+
+    if not revenue_requested:
+        return alignment
+
+    filter_text = " ".join(
+        back_translation.filters
+    ).lower()
+
+    valid_revenue_status_filter = (
+        "completed" in filter_text
+        or "shipped" in filter_text
+    )
+
+    if not valid_revenue_status_filter:
+        return alignment
+
+    remaining_assumptions = [
+        assumption
+        for assumption in alignment.extra_assumptions
+        if not any(
+            term in assumption.lower()
+            for term in (
+                "completed",
+                "shipped",
+                "order status",
+                "status filter",
+            )
+        )
+    ]
+
+    if (
+        not alignment.missing_requirements
+        and not remaining_assumptions
+    ):
+        return alignment.model_copy(
+            update={
+                "score": max(
+                    alignment.score,
+                    0.90,
+                ),
+                "verdict": "aligned",
+                "extra_assumptions": [],
+                "explanation": (
+                    "The SQL answers the requested revenue "
+                    "question. Filtering completed or shipped "
+                    "orders is part of the documented revenue "
+                    "business definition."
+                ),
+            }
+        )
+
+    return alignment
 def judge_question_alignment(
     *,
     original_question: str,
@@ -372,6 +613,13 @@ A high score requires agreement on:
 - result limit
 - business meaning
 
+Important business rule:
+
+For revenue or sales questions, filtering orders to completed or
+shipped statuses is part of the database's standard revenue
+definition. Do not classify that filter as an unsupported assumption
+when the original question asks for revenue.
+
 Do not reward similar wording when the calculation is different.
 
 ORIGINAL QUESTION:
@@ -399,9 +647,14 @@ SQL BACK-TRANSLATION:
             "Groq returned no alignment choice."
         )
 
-    result = _parse_model_content(
-        completion.choices[0].message.content or "",
-        AlignmentResult,
+    result = _parse_alignment_content(
+        completion.choices[0].message.content or ""
+    )
+
+    result = _normalize_business_rule_alignment(
+        original_question=original_question,
+        back_translation=back_translation,
+        alignment=result,
     )
 
     return result, _get_token_usage(completion)
@@ -1058,7 +1311,6 @@ def _determine_risk_level(
 
     return "low"
 
-
 def check_hallucination(
     request: HallucinationCheckRequest,
 ) -> HallucinationCheckResponse:
@@ -1103,52 +1355,59 @@ def check_hallucination(
         result_sanity.issues
     )
 
-    if (
-        alignment.score
+    alignment_failed = (
+        alignment.verdict == "misaligned"
+        or alignment.score
         < settings.hallucination_alignment_threshold
-        or alignment.verdict != "aligned"
-    ):
+    )
+
+    if alignment_failed:
         _add_issue(
             issues,
             code="question_sql_misalignment",
-            severity=(
-                "error"
-                if alignment.verdict == "misaligned"
-                else "warning"
-            ),
+            severity="error",
             signal="back_translation",
             message=alignment.explanation,
         )
 
-    if (
-        schema_coverage.overall_coverage_score
-        < settings.hallucination_schema_coverage_threshold
-    ):
+    elif alignment.verdict == "partially_aligned":
+        _add_issue(
+            issues,
+            code="partial_question_alignment",
+            severity="warning",
+            signal="back_translation",
+            message=alignment.explanation,
+        )
+
+    no_expected_table_used = (
+        bool(schema_coverage.expected_tables)
+        and not schema_coverage.matched_tables
+    )
+
+    if no_expected_table_used:
         _add_issue(
             issues,
             code="insufficient_schema_coverage",
             severity="error",
             signal="schema_coverage",
             message=(
-                "The SQL does not use enough of the schema "
-                "expected for this question."
+                "The SQL does not use any table relevant "
+                "to the original question."
             ),
         )
 
     elif (
-        schema_coverage.missing_tables
-        and schema_coverage.overall_coverage_score < 0.90
+        schema_coverage.overall_coverage_score
+        < settings.hallucination_schema_coverage_threshold
     ):
         _add_issue(
             issues,
-            code="expected_tables_missing",
+            code="partial_schema_coverage",
             severity="warning",
             signal="schema_coverage",
             message=(
-                "Expected tables were not used: "
-                + ", ".join(
-                    schema_coverage.missing_tables
-                )
+                "The SQL uses a relevant table, but some "
+                "retrieved schema candidates were not required."
             ),
         )
 
@@ -1167,17 +1426,11 @@ def check_hallucination(
             ),
         )
 
+    schema_coverage_failed = no_expected_table_used
+
     hallucination_detected = (
-        alignment.verdict != "aligned"
-        or (
-            alignment.score
-            < settings.hallucination_alignment_threshold
-        )
-        or (
-            schema_coverage.overall_coverage_score
-            < settings
-            .hallucination_schema_coverage_threshold
-        )
+        alignment_failed
+        or schema_coverage_failed
         or not result_sanity.passed
     )
 

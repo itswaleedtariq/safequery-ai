@@ -98,6 +98,12 @@ class Settings(BaseSettings):
         # Complete query workflow
     workflow_log_file: str = "logs/workflow.log"
     
+        # Frontend integration
+    frontend_origins: str = (
+        "http://localhost:5173,"
+        "http://127.0.0.1:5173"
+    )
+    
 
 
 @lru_cache

@@ -1,5 +1,5 @@
 from typing import Any, Literal
-
+from backend.app.schemas.confidence import ConfidenceSignal
 from pydantic import BaseModel, Field
 
 from backend.app.schemas.prompt_context import (
@@ -98,7 +98,13 @@ class QueryWorkflowResponse(BaseModel):
     ) = None
 
     manual_review_recommended: bool = False
+    confidence_signals: list[ConfidenceSignal] = Field(
+        default_factory=list
+    )
 
+    confidence_reasons: list[str] = Field(
+        default_factory=list
+    )
     hallucination_detected: bool | None = None
 
     hallucination_risk: (

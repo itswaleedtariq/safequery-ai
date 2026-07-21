@@ -178,6 +178,7 @@ def test_successful_workflow_returns_rows(
         confidence_label="high",
         should_show_result=True,
         manual_review_recommended=False,
+        signals=[],
         hallucination=hallucination,
         multi_query_agreement=agreement,
         reasons=[],
@@ -278,6 +279,7 @@ def test_low_confidence_hides_rows(
         confidence_label="low",
         should_show_result=False,
         manual_review_recommended=True,
+        signals=[],
         hallucination=hallucination,
         multi_query_agreement=agreement,
         reasons=[
