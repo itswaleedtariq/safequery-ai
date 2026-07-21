@@ -1,6 +1,9 @@
 from fastapi import APIRouter
 
 from backend.app.api import (
+    confidence as confidence_routes,
+)
+from backend.app.api import (
     guardrails as guardrail_routes,
 )
 from backend.app.api import (
@@ -50,5 +53,10 @@ api_router.include_router(
 
 api_router.include_router(
     hallucination_routes.router,
+    prefix="/v1",
+)
+
+api_router.include_router(
+    confidence_routes.router,
     prefix="/v1",
 )

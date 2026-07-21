@@ -82,6 +82,19 @@ class Settings(BaseSettings):
     hallucination_max_completion_tokens: int = 1600
     hallucination_log_file: str = "logs/hallucination.log"
     
+        # Confidence scoring
+    confidence_high_threshold: float = 0.85
+    confidence_medium_threshold: float = 0.65
+
+    confidence_weight_syntax: float = 0.20
+    confidence_weight_alignment: float = 0.30
+    confidence_weight_result_sanity: float = 0.20
+    confidence_weight_multi_query: float = 0.15
+    confidence_weight_schema_coverage: float = 0.15
+
+    multi_query_validation_enabled: bool = True
+    confidence_log_file: str = "logs/confidence.log"
+    
 
 
 @lru_cache
