@@ -14,6 +14,9 @@ from backend.app.api import prompt as prompt_routes
 from backend.app.api import (
     query_execution as execution_routes,
 )
+from backend.app.api import (
+    query_workflow as workflow_routes,
+)
 from backend.app.api import schema as schema_routes
 from backend.app.api import (
     sql_generation as sql_generation_routes,
@@ -58,5 +61,10 @@ api_router.include_router(
 
 api_router.include_router(
     confidence_routes.router,
+    prefix="/v1",
+)
+
+api_router.include_router(
+    workflow_routes.router,
     prefix="/v1",
 )

@@ -95,6 +95,9 @@ class Settings(BaseSettings):
     multi_query_validation_enabled: bool = True
     confidence_log_file: str = "logs/confidence.log"
     
+        # Complete query workflow
+    workflow_log_file: str = "logs/workflow.log"
+    
 
 
 @lru_cache
