@@ -1,0 +1,18 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="mark" x1="24" y1="20" x2="102" y2="110" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2F7275"></stop>
+      <stop offset="1" stop-color="#244E56"></stop>
+    </linearGradient>
+    <linearGradient id="accent" x1="42" y1="40" x2="88" y2="88" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#D1B98A"></stop>
+      <stop offset="1" stop-color="#A88D5C"></stop>
+    </linearGradient>
+  </defs>
+  <path d="M64 9L105 25V57C105 84 88 106 64 118C40 106 23 84 23 57V25L64 9Z" fill="url(#mark)"></path>
+  <path d="M64 18L96 30V57C96 79 83 97 64 108C45 97 32 79 32 57V30L64 18Z" stroke="#86A9A6" stroke-width="2" opacity=".65"></path>
+  <ellipse cx="64" cy="46" rx="22" ry="8" fill="url(#accent)"></ellipse>
+  <path d="M42 46V68C42 72.4 51.8 76 64 76C76.2 76 86 72.4 86 68V46" stroke="#E6D7B8" stroke-width="5" stroke-linecap="round"></path>
+  <path d="M42 57C42 61.4 51.8 65 64 65C76.2 65 86 61.4 86 57" stroke="#E6D7B8" stroke-width="4" stroke-linecap="round"></path>
+  <path d="M51 89L58 96L79 82" stroke="#F2E8D3" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>

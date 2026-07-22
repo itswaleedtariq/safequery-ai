@@ -40,7 +40,37 @@ dist/
 logs/
 *.log
 
-# Frontend
-frontend/node_modules/
-frontend/dist/
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Environment variables
+.env
+backend/.env
 frontend/.env
+
+# Frontend dependencies
+frontend/node_modules/
+
+# Frontend production output
+frontend/dist/
+
+# Vite temporary files
+frontend/.vite/
+
+# TypeScript build information
+*.tsbuildinfo
+
+# Logs
+logs/
+*.log
+
+# Editors
+.vscode/
+.idea/
+
+# Operating system files
+.DS_Store
+Thumbs.db
