@@ -19,15 +19,6 @@ function getErrorMessage(payload: unknown, status: number): string {
     if (typeof detail === "string") {
       return detail;
     }
-
-    if (
-      detail &&
-      typeof detail === "object" &&
-      "message" in detail &&
-      typeof (detail as { message: unknown }).message === "string"
-    ) {
-      return (detail as { message: string }).message;
-    }
   }
 
   return `Request failed with status ${status}.`;
@@ -44,14 +35,10 @@ export async function submitQuery(
     body: JSON.stringify(request),
   });
 
-  const payload: unknown = await response
-    .json()
-    .catch(() => null);
+  const payload: unknown = await response.json().catch(() => null);
 
   if (!response.ok) {
-    throw new Error(
-      getErrorMessage(payload, response.status),
-    );
+    throw new Error(getErrorMessage(payload, response.status));
   }
 
   return payload as QueryWorkflowResponse;

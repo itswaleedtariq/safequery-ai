@@ -5,7 +5,6 @@ export type WorkflowStatus =
   | "review_required";
 
 export type ConfidenceLabel = "high" | "medium" | "low";
-
 export type HallucinationRisk = "low" | "medium" | "high";
 
 export type MultiQueryStatus =
@@ -49,41 +48,44 @@ export interface QueryWorkflowResponse {
   status: WorkflowStatus;
   question: string;
   summary: string;
-
   generated_sql: string | null;
   safe_sql: string | null;
-
   explanation: string;
-
   tables_used: string[];
   columns_used: string[];
-
   result_columns: string[];
   rows: Array<Record<string, unknown>>;
   row_count: number;
   result_hidden: boolean;
-
   guardrail_allowed: boolean | null;
-
   confidence_score: number | null;
   confidence_percent: number | null;
   confidence_label: ConfidenceLabel | null;
   manual_review_recommended: boolean;
-
-  confidence_signals: ConfidenceSignal[];
-  confidence_reasons: string[];
-
+  confidence_signals?: ConfidenceSignal[];
+  confidence_reasons?: string[];
   hallucination_detected: boolean | null;
   hallucination_risk: HallucinationRisk | null;
-
   multi_query_status: MultiQueryStatus | null;
-
   clarification_question: string | null;
-
   warnings: WorkflowWarning[];
-
   provider: string | null;
   model: string | null;
-
   timings: WorkflowTimings;
+}
+
+export interface StoredQuery {
+  id: string;
+  question: string;
+  createdAt: string;
+  status: WorkflowStatus;
+  confidencePercent: number | null;
+  rowCount: number;
+  generatedSql: string | null;
+  feedback?: "correct" | "incorrect";
+}
+
+export interface LocalUser {
+  name: string;
+  email: string;
 }
