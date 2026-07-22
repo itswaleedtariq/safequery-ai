@@ -1,91 +1,317 @@
-# SafeQuery AI
+SafeQuery AI
 
-SafeQuery AI is a secure **Text-to-SQL analytics platform** that converts natural-language business questions into validated PostgreSQL queries and database results.
+A secure natural-language-to-SQL analytics platform that converts plain-English business questions into validated PostgreSQL queries, executes them through a read-only database role, detects likely hallucinations, and returns results with an explainable confidence score.
 
-The system combines schema-aware prompting, SQL guardrails, read-only execution, hallucination detection, confidence scoring, and a React dashboard.
+SafeQuery AI is a portfolio-grade AI engineering project. It goes beyond basic SQL generation by combining schema-aware prompting, AST-based SQL guardrails, query-plan validation, read-only execution, hallucination checks, confidence scoring, JWT authentication, and a React dashboard.
 
-## Features
+Problem
 
-- Natural-language business questions
-- Schema-aware SQL generation with Groq
-- PostgreSQL schema introspection
-- SQL validation with SQLGlot
-- Blocking of unsafe statements such as `INSERT`, `UPDATE`, `DELETE`, and `DROP`
-- Automatic query row limits
-- Dedicated read-only PostgreSQL account
-- PostgreSQL `EXPLAIN` plan validation
-- Query timeout and cost controls
-- SQL back-translation
-- Question-to-SQL alignment checking
-- Business-rule validation
-- Result sanity checks
-- Explainable confidence scoring
-- Optional multi-query agreement validation
-- Automatic hiding of unsafe or low-confidence results
-- React and TypeScript dashboard
-- Audit logs for guardrails, execution, hallucination, confidence, and workflow decisions
+Text-to-SQL can make relational data accessible to non-technical users, but generated SQL creates important risks:
 
-## Architecture
+Destructive or unauthorized operations
 
-```text
-User Question
-      ↓
-Schema-Aware Prompt Builder
-      ↓
-Groq SQL Generation
-      ↓
-Static SQL Guardrails
-      ↓
-PostgreSQL EXPLAIN Validation
-      ↓
-Read-Only Query Execution
-      ↓
-Hallucination Detection
-      ↓
-Confidence Scoring
-      ↓
-React Dashboard
-```
+Incorrect joins, filters, and aggregations
 
-## Technology Stack
+Queries that answer a different question
 
-### Backend
+Excessive scans or expensive execution plans
 
-- Python
-- FastAPI
-- Pydantic
-- SQLAlchemy
-- Psycopg
-- SQLGlot
-- Groq
-- Pytest
+Hallucinated tables and columns
 
-### Database
+Exposure of authentication or other internal tables
 
-- PostgreSQL 17
-- Docker Compose
+Results presented with unjustified confidence
 
-### Frontend
+SafeQuery AI uses several independent controls to validate a generated query before execution and to evaluate its result before displaying it.
 
-- React
-- TypeScript
-- Vite
-- CSS
+Features
 
-## Database Tables
+Natural-language querying
 
-The sample e-commerce database contains:
+Users can ask questions such as:
 
-- `categories`
-- `customers`
-- `products`
-- `orders`
-- `order_items`
-- `payments`
+How many customers are there?
 
-## Project Structure
+Show completed revenue by month.
 
-```text
+Which products generated the highest revenue?
+
+The backend generates PostgreSQL, validates it, runs it safely, and returns structured results.
+
+Schema-aware generation
+
+SQLAlchemy introspection provides the model with approved schema information:
+
+Tables and columns
+
+Data types
+
+Primary keys
+
+Foreign-key relationships
+
+Indexes
+
+Computed columns
+
+Low-cardinality sample values
+
+Business definitions
+
+A strict allowlist exposes only the six analytics tables. Internal application tables such as app_users are excluded.
+
+SQL guardrails
+
+SQL is parsed with SQLGlot and checked before execution. The safety layer:
+
+Allows read-only queries
+
+Blocks DML writes
+
+Blocks DDL operations
+
+Rejects multiple statements
+
+Rejects SQL comments
+
+Blocks dangerous functions
+
+Rejects unknown tables and columns
+
+Rejects ambiguous unqualified columns
+
+Restricts subquery depth
+
+Applies and caps row limits
+
+Uses EXPLAIN for cost and scan validation
+
+Enforces query timeout controls
+
+Read-only execution
+
+Generated SQL is executed with a dedicated PostgreSQL reader role. That role has SELECT access only to the approved business tables and no access to authentication data.
+
+Hallucination detection
+
+The validation pipeline checks generated SQL using:
+
+SQL-to-question back-translation
+
+Question/SQL alignment scoring
+
+Expected schema coverage
+
+Aggregate and business-rule checks
+
+Result sanity checks
+
+Independent-query agreement where available
+
+Specific issue and warning codes
+
+Confidence scoring
+
+The composite confidence score uses:
+
+Signal
+
+Weight
+
+Safety validation
+
+20%
+
+Question-to-SQL alignment
+
+30%
+
+Result sanity
+
+20%
+
+Independent-query agreement
+
+15%
+
+Schema coverage
+
+15%
+
+High hallucination risk or result disagreement can cap the final score.
+
+JWT authentication
+
+The application includes:
+
+Backend signup and login
+
+Argon2 password hashing
+
+Signed JWT access tokens
+
+Protected /v1/auth/me
+
+Protected query execution
+
+Frontend session restoration
+
+Automatic logout for expired or invalid tokens
+
+Passwords are never stored in plain text.
+
+React interface
+
+The frontend includes:
+
+Home and About pages
+
+Signup and Login pages
+
+Protected query workspace
+
+Generated SQL display
+
+Result table
+
+Confidence breakdown
+
+Guardrail and validation warnings
+
+Sample questions
+
+Feedback controls
+
+Browser-persisted theme
+
+Light and dark modes
+
+Responsive layout
+
+Custom SafeQuery AI branding
+
+Architecture
+
+flowchart TD
+    U[User] --> F[React Frontend]
+    F --> API[FastAPI API]
+
+    API --> AUTH[JWT Authentication]
+    AUTH --> APPDB[(Application Tables)]
+
+    API --> WF[Query Workflow]
+    WF --> SCHEMA[Schema Introspection and Allowlist]
+    SCHEMA --> PROMPT[Schema-Aware Prompt Builder]
+    PROMPT --> LLM[Groq LLM]
+    LLM --> SQL[Structured SQL Output]
+
+    SQL --> GUARD[SQLGlot Guardrails]
+    GUARD --> PLAN[EXPLAIN Validation]
+    PLAN --> DB[(Read-Only PostgreSQL Role)]
+
+    DB --> SANITY[Result Sanity Checks]
+    SQL --> BACK[SQL Back-Translation]
+    BACK --> ALIGN[Alignment Validation]
+    SCHEMA --> COVER[Schema Coverage]
+
+    SANITY --> HALL[Hallucination Detector]
+    ALIGN --> HALL
+    COVER --> HALL
+    HALL --> CONF[Confidence Scorer]
+    CONF --> API
+
+Technology Stack
+
+Backend
+
+Python 3.11+
+
+FastAPI
+
+Pydantic
+
+SQLAlchemy 2.x
+
+PostgreSQL 17
+
+SQLGlot
+
+Groq API
+
+PyJWT
+
+pwdlib with Argon2
+
+Pytest
+
+Frontend
+
+React
+
+TypeScript
+
+Vite
+
+React Router
+
+Lucide React
+
+CSS light and dark themes
+
+Development infrastructure
+
+Docker
+
+Docker Compose
+
+PostgreSQL initialization scripts
+
+Separate application and read-only database access
+
+Database
+
+The analytics dataset contains six queryable tables:
+
+Table
+
+Purpose
+
+categories
+
+Product categories
+
+customers
+
+Customer records
+
+products
+
+Product catalog and pricing
+
+orders
+
+Order-level records
+
+order_items
+
+Product-level order details
+
+payments
+
+Payment records
+
+Internal tables such as app_users are never exposed to the LLM.
+
+Revenue definition
+
+Revenue is calculated as:
+
+SUM(order_items.line_total)
+
+for orders with a status of completed or shipped.
+
+Project Structure
+
 safequery-ai/
 ├── backend/
 │   ├── app/
@@ -94,215 +320,447 @@ safequery-ai/
 │   │   ├── data/
 │   │   ├── db/
 │   │   ├── guardrails/
+│   │   ├── models/
 │   │   ├── schemas/
-│   │   └── services/
+│   │   ├── services/
+│   │   ├── validators/
+│   │   └── main.py
 │   └── tests/
-├── database/
-│   └── init/
 ├── frontend/
-│   ├── src/
 │   ├── public/
-│   └── package.json
+│   ├── src/
+│   │   ├── assets/
+│   │   ├── components/
+│   │   ├── context/
+│   │   ├── pages/
+│   │   ├── utils/
+│   │   ├── api.ts
+│   │   ├── App.tsx
+│   │   ├── index.css
+│   │   ├── main.tsx
+│   │   └── types.ts
+│   ├── .env.example
+│   ├── index.html
+│   ├── package.json
+│   └── vite.config.ts
 ├── docker-compose.yml
 ├── requirements.txt
 ├── pytest.ini
 ├── .env.example
 └── README.md
-```
 
-## Environment Variables
+API
 
-Copy `.env.example` to `.env` and configure the required values.
+Authentication
 
-Example:
+Method
 
-```env
-DATABASE_URL=postgresql+psycopg://safequery_admin:your_password@127.0.0.1:5433/safequery_db
-READONLY_DATABASE_URL=postgresql+psycopg://safequery_reader:your_reader_password@127.0.0.1:5433/safequery_db
+Endpoint
 
-GROQ_API_KEY=your_groq_api_key
-GROQ_MODEL=openai/gpt-oss-20b
+Purpose
 
-FRONTEND_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
-MIN_CONFIDENCE_SCORE=0.65
-```
+Auth
 
-Never commit the real `.env` file or API keys.
+POST
 
-## Run Locally
+/v1/auth/signup
 
-### 1. Clone the repository
+Create an account and issue a JWT
 
-```powershell
-git clone https://github.com/your-username/safequery-ai.git
+No
+
+POST
+
+/v1/auth/login
+
+Validate credentials and issue a JWT
+
+No
+
+GET
+
+/v1/auth/me
+
+Return the authenticated user
+
+Bearer JWT
+
+Query system
+
+Method
+
+Endpoint
+
+Purpose
+
+Auth
+
+POST
+
+/v1/query
+
+Generate, validate, execute, and score SQL
+
+Bearer JWT
+
+GET
+
+/v1/schema
+
+Return the approved analytics schema
+
+Current API configuration
+
+Local OpenAPI documentation:
+
+http://127.0.0.1:8000/docs
+
+Local Setup
+
+Prerequisites
+
+Python 3.11 or later
+
+Node.js and npm
+
+Docker Desktop
+
+Git
+
+Groq API key
+
+The project has been developed on Windows PowerShell with Python 3.13.1.
+
+1. Clone the repository
+
+git clone https://github.com/itswaleedtariq/safequery-ai.git
 cd safequery-ai
-```
 
-### 2. Create and activate the Python environment
+2. Create the virtual environment
 
-```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-```
-
-### 3. Install backend dependencies
-
-```powershell
+python -m pip install --upgrade pip
 pip install -r requirements.txt
-```
 
-### 4. Create the environment file
+3. Configure backend environment variables
 
-```powershell
 Copy-Item .env.example .env
-```
 
-Add your database credentials and Groq API key to `.env`.
+Example configuration:
 
-### 5. Start PostgreSQL
+DATABASE_URL=postgresql+psycopg://safequery_admin:your_password@localhost:5433/safequery_db
+READONLY_DATABASE_URL=postgresql+psycopg://safequery_reader:your_reader_password@localhost:5433/safequery_db
+DATABASE_SCHEMA=public
 
-```powershell
+GROQ_API_KEY=replace_with_your_groq_api_key
+GROQ_MODEL=openai/gpt-oss-20b
+
+JWT_SECRET_KEY=replace_with_a_long_random_secret
+JWT_ALGORITHM=HS256
+JWT_ACCESS_TOKEN_MINUTES=60
+
+Generate a secure JWT secret:
+
+python -c "import secrets; print(secrets.token_urlsafe(48))"
+
+Never commit .env.
+
+4. Start PostgreSQL
+
 docker compose up -d
-```
+docker compose ps
 
-### 6. Start the FastAPI backend
+The current local configuration exposes PostgreSQL on host port 5433.
 
-```powershell
+5. Create application tables
+
+python -m backend.app.db.create_app_tables
+
+Expected output:
+
+SafeQuery application tables created successfully.
+
+6. Start the backend
+
 uvicorn backend.app.main:app --reload
-```
 
 Backend:
 
-```text
 http://127.0.0.1:8000
-```
 
-Swagger documentation:
-
-```text
-http://127.0.0.1:8000/docs
-```
-
-### 7. Start the React frontend
+7. Configure and start the frontend
 
 Open another terminal:
 
-```powershell
 cd frontend
+Copy-Item .env.example .env
 npm install
 npm run dev
-```
+
+Frontend .env:
+
+VITE_API_BASE_URL=http://127.0.0.1:8000
 
 Frontend:
 
-```text
 http://localhost:5173
-```
 
-## Main API Endpoints
+Authentication Flow
 
-```text
-GET  /health
-GET  /health/database
-GET  /v1/schema
-POST /v1/prompt/preview
-POST /v1/sql/generate
-POST /v1/sql/validate
-POST /v1/sql/execute
-POST /v1/hallucination/check
-POST /v1/confidence/check
-POST /v1/query
-```
+Signup request
 
-The main frontend endpoint is:
-
-```text
-POST /v1/query
-```
-
-Example request:
-
-```json
 {
-  "question": "Which five products generated the highest revenue?",
-  "max_tables": 4,
-  "max_examples": 3,
-  "run_multi_query": false
+  "name": "Waleed Tariq",
+  "email": "waleed@example.com",
+  "password": "SafeQuery123!"
 }
-```
 
-## Safety Design
+The backend normalizes the email, checks uniqueness, hashes the password with Argon2, stores the user, and returns a signed access token.
 
-Generated SQL is treated as untrusted input.
+Login request
 
-Before execution, SafeQuery AI:
+{
+  "email": "waleed@example.com",
+  "password": "SafeQuery123!"
+}
 
-1. Parses the SQL.
-2. Blocks non-read-only statements.
-3. Validates referenced tables and columns.
-4. Applies a safe row limit when required.
-5. Runs PostgreSQL `EXPLAIN`.
-6. Rejects expensive query plans.
-7. Executes through a dedicated read-only user.
-8. Applies timeout protection.
-9. Checks question alignment and business rules.
-10. Calculates an explainable confidence score.
+Protected request
 
-## Run Tests
+Authorization: Bearer <access-token>
+
+The frontend restores an existing session by calling /v1/auth/me.
+
+Example Query
+
+{
+  "question": "How many customers are there?"
+}
+
+A successful response can include:
+
+Generated SQL
+
+SQL explanation
+
+Guardrail decision
+
+Result rows and columns
+
+Row count
+
+Execution time
+
+Query plan
+
+Hallucination status
+
+Alignment score
+
+Schema coverage
+
+Result sanity findings
+
+Confidence score and breakdown
+
+Warnings
+
+The exact contract is defined by the backend Pydantic schemas.
+
+Demo Questions
+
+How many customers are there?
+
+How many orders were placed in each status?
+
+Which products generated the highest completed revenue?
+
+Show completed revenue by month.
+
+Which customers placed the most orders?
+
+Show revenue by product category.
+
+Ambiguous questions can trigger a clarification request rather than forcing the model to guess.
+
+Testing
 
 Run all backend tests:
 
-```powershell
 python -m pytest backend/tests -v
-```
 
-Run specific test modules:
+Current verified result:
 
-```powershell
-python -m pytest backend/tests/test_hallucination_detector.py -v
-python -m pytest backend/tests/test_confidence_scorer.py -v
-python -m pytest backend/tests/test_query_workflow.py -v
-```
+49 passed
 
-Check Python syntax:
+The suite covers confidence scoring, hallucination detection, prompt construction, schema introspection, SQL generation schemas, SQL guardrails, query execution, read-only role use, workflow behavior, clarification handling, and low-confidence result gating.
 
-```powershell
+Compile the backend:
+
 python -m compileall backend
-```
 
-## Frontend Build
+Run frontend checks:
 
-```powershell
 cd frontend
 npm run lint
 npm run build
-```
 
-The production build is created in:
+Security Model
 
-```text
-frontend/dist/
-```
+SafeQuery AI uses defense in depth:
 
-## Example Questions
+Schema isolation: only six business tables are exposed.
 
-```text
-How many customers are there?
+Structured generation: model output is validated with Pydantic.
 
-Show the total number of completed orders.
+AST parsing: SQLGlot parses SQL structurally.
 
-What is the average order value?
+Guardrails: unsafe operations and invalid references are rejected.
 
-Which five products generated the highest revenue?
-```
+Plan validation: EXPLAIN checks query cost and scans.
 
-## Current Version
+Read-only role: database permissions block writes and private tables.
 
-```text
-v1.1.0
-```
+Result validation: alignment, coverage, business rules, and sanity are checked.
 
-## Author
+Confidence gating: questionable results can be hidden or accompanied by warnings.
 
-**Waleed Tariq**  
-Software Engineering Student
+Authentication: Argon2 hashes and JWT bearer tokens protect user access.
+
+Current Limitations
+
+Query history and feedback are not yet persisted per user in PostgreSQL.
+
+JWT access tokens are stored in browser localStorage.
+
+Refresh-token rotation is not implemented.
+
+Email verification and password reset are not implemented.
+
+The golden evaluation dataset is not yet complete.
+
+Automated evaluation reports are not yet included.
+
+The sample database is intended for demonstration and testing.
+
+LLM-generated SQL can still be wrong; confidence and warnings must be reviewed.
+
+The system should not be connected to sensitive production data in its current form.
+
+Planned Enhancements
+
+PostgreSQL-backed user query history
+
+Persistent correct/incorrect feedback
+
+User-scoped history authorization
+
+Golden natural-language-to-SQL dataset
+
+Execution-result comparison against verified SQL
+
+Automated accuracy and hallucination reports
+
+HttpOnly cookie-based sessions
+
+Refresh-token rotation
+
+Login rate limiting
+
+Email verification and password reset
+
+Expanded audit logging
+
+Stronger ambiguity detection
+
+Additional multi-query validation
+
+Design Decisions
+
+Why PostgreSQL?
+
+PostgreSQL provides realistic SQL behavior, query plans, generated columns, relationships, permissions, and role-based security.
+
+Why SQLGlot?
+
+SQLGlot enables dialect-aware parsing and structural inspection of statements, tables, columns, functions, limits, comments, and subqueries.
+
+Why a read-only database role?
+
+Application validation is not a sufficient security boundary. Database permissions prevent writes even if an application check fails.
+
+Why a strict table allowlist?
+
+A denylist could expose future tables accidentally. With an allowlist, new authentication, history, session, or feedback tables remain private by default.
+
+Why SQL back-translation?
+
+A syntactically valid query can still answer the wrong question. Back-translation creates a natural-language interpretation that can be compared with the original request.
+
+Why an explainable confidence score?
+
+A single unexplained number is difficult to trust. SafeQuery AI exposes the safety, alignment, sanity, agreement, and schema-coverage signals behind the final score.
+
+Portfolio Skills Demonstrated
+
+AI application architecture
+
+Structured LLM outputs
+
+Prompt engineering
+
+Text-to-SQL generation
+
+SQL parsing and validation
+
+PostgreSQL security
+
+Role-based access control
+
+Hallucination detection
+
+Confidence calibration
+
+FastAPI service design
+
+React and TypeScript
+
+JWT authentication
+
+SQLAlchemy
+
+Docker-based development
+
+Automated testing
+
+Security-oriented AI engineering
+
+The project focuses not only on generating SQL, but on determining whether the SQL is safe, relevant, and trustworthy enough to execute and display.
+
+Author
+
+Waleed TariqSoftware Engineering Undergraduate, GIKI
+
+Focus areas:
+
+AI Engineering
+
+Backend Development
+
+Web Development
+
+DevOps
+
+Database Systems
+
+GitHub: https://github.com/itswaleedtariq
+
+License
+
+This project is intended for educational, portfolio, and demonstration purposes.
+
+Add a LICENSE file before external distribution. The MIT License is a suitable choice when reuse with attribution is permitted.
+
+Acknowledgment
+
+SafeQuery AI was developed from a production-oriented text-to-SQL project blueprint emphasizing guardrails, hallucination detection, confidence scoring, a query interface, and an evaluation workflow. The implementation extends that concept with PostgreSQL role isolation, strict schema filtering, JWT authentication, and a React dashboard.
