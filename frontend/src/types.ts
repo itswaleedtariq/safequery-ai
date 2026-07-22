@@ -85,7 +85,17 @@ export interface StoredQuery {
   feedback?: "correct" | "incorrect";
 }
 
-export interface LocalUser {
+export interface AuthUser {
+  id: string;
   name: string;
   email: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface AuthResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  user: AuthUser;
 }

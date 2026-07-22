@@ -40,3 +40,22 @@ class QueryTimeoutError(RuntimeError):
 
 class QueryExecutionError(RuntimeError):
     """Raised when approved SQL cannot be executed."""
+
+class AuthenticationConfigurationError(RuntimeError):
+    """Raised when authentication settings are missing."""
+
+
+class EmailAlreadyRegisteredError(RuntimeError):
+    """Raised when an email address already exists."""
+
+
+class InvalidCredentialsError(RuntimeError):
+    """Raised when login credentials are incorrect."""
+
+
+class InvalidTokenError(RuntimeError):
+    """Raised when an access token cannot be validated."""
+
+
+class InactiveUserError(RuntimeError):
+    """Raised when an inactive account tries to authenticate."""    

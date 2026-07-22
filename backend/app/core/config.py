@@ -104,6 +104,11 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5173"
     )
     
+        # Authentication
+    jwt_secret_key: str = ""
+    jwt_algorithm: str = "HS256"
+    jwt_access_token_minutes: int = 60
+    
 
 
 @lru_cache

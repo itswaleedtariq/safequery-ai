@@ -1,125 +1,190 @@
 import {
   createContext,
+  useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
 
-import type { LocalUser } from "../types";
+import {
+  getAccessToken,
+  getCurrentUser,
+  loginUser,
+  removeAccessToken,
+  saveAccessToken,
+  signupUser,
+} from "../api";
 
-interface StoredAccount extends LocalUser {
-  passwordHash: string;
-}
+import type { AuthUser } from "../types";
 
 interface AuthContextValue {
-  user: LocalUser | null;
-  login: (email: string, password: string) => Promise<void>;
+  user: AuthUser | null;
+  loading: boolean;
+
+  login: (
+    email: string,
+    password: string,
+  ) => Promise<void>;
+
   signup: (
     name: string,
     email: string,
     password: string,
   ) => Promise<void>;
+
   logout: () => void;
 }
 
-const AuthContext = createContext<AuthContextValue | null>(null);
-const ACCOUNT_KEY = "safequery.localAccount";
-const SESSION_KEY = "safequery.session";
+const AuthContext =
+  createContext<AuthContextValue | null>(null);
 
-async function hashPassword(password: string): Promise<string> {
-  const bytes = new TextEncoder().encode(password);
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
+export function AuthProvider({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const [user, setUser] =
+    useState<AuthUser | null>(null);
 
-  return Array.from(new Uint8Array(digest))
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
-}
+  const [loading, setLoading] =
+    useState(true);
 
-function readSession(): LocalUser | null {
-  try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    return raw ? (JSON.parse(raw) as LocalUser) : null;
-  } catch {
-    return null;
-  }
-}
-
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<LocalUser | null>(readSession);
-
-  async function signup(
-    name: string,
-    email: string,
-    password: string,
-  ): Promise<void> {
-    const normalizedEmail = email.trim().toLowerCase();
-    const account: StoredAccount = {
-      name: name.trim(),
-      email: normalizedEmail,
-      passwordHash: await hashPassword(password),
-    };
-
-    localStorage.setItem(ACCOUNT_KEY, JSON.stringify(account));
-
-    const session: LocalUser = {
-      name: account.name,
-      email: account.email,
-    };
-
-    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-    setUser(session);
-  }
-
-  async function login(email: string, password: string): Promise<void> {
-    const raw = localStorage.getItem(ACCOUNT_KEY);
-
-    if (!raw) {
-      throw new Error("No account exists on this browser. Create one first.");
-    }
-
-    const account = JSON.parse(raw) as StoredAccount;
-    const passwordHash = await hashPassword(password);
-
-    if (
-      account.email !== email.trim().toLowerCase() ||
-      account.passwordHash !== passwordHash
-    ) {
-      throw new Error("Email or password is incorrect.");
-    }
-
-    const session: LocalUser = {
-      name: account.name,
-      email: account.email,
-    };
-
-    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-    setUser(session);
-  }
-
-  function logout(): void {
-    localStorage.removeItem(SESSION_KEY);
+  const clearSession = useCallback(() => {
+    removeAccessToken();
     setUser(null);
-  }
+  }, []);
 
-  const value = useMemo(
-    () => ({ user, login, signup, logout }),
-    [user],
+  useEffect(() => {
+    let componentMounted = true;
+
+    async function restoreSession() {
+      const token = getAccessToken();
+
+      if (!token) {
+        if (componentMounted) {
+          setLoading(false);
+        }
+
+        return;
+      }
+
+      try {
+        const currentUser =
+          await getCurrentUser();
+
+        if (componentMounted) {
+          setUser(currentUser);
+        }
+      } catch {
+        clearSession();
+      } finally {
+        if (componentMounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    function handleUnauthorized() {
+      clearSession();
+    }
+
+    window.addEventListener(
+      "safequery:unauthorized",
+      handleUnauthorized,
+    );
+
+    void restoreSession();
+
+    return () => {
+      componentMounted = false;
+
+      window.removeEventListener(
+        "safequery:unauthorized",
+        handleUnauthorized,
+      );
+    };
+  }, [clearSession]);
+
+  const login = useCallback(
+    async (
+      email: string,
+      password: string,
+    ): Promise<void> => {
+      const response = await loginUser(
+        email.trim().toLowerCase(),
+        password,
+      );
+
+      saveAccessToken(
+        response.access_token,
+      );
+
+      setUser(response.user);
+    },
+    [],
+  );
+
+  const signup = useCallback(
+    async (
+      name: string,
+      email: string,
+      password: string,
+    ): Promise<void> => {
+      const response = await signupUser(
+        name.trim(),
+        email.trim().toLowerCase(),
+        password,
+      );
+
+      saveAccessToken(
+        response.access_token,
+      );
+
+      setUser(response.user);
+    },
+    [],
+  );
+
+  const logout = useCallback(() => {
+    clearSession();
+  }, [clearSession]);
+
+  const contextValue = useMemo(
+    () => ({
+      user,
+      loading,
+      login,
+      signup,
+      logout,
+    }),
+    [
+      user,
+      loading,
+      login,
+      signup,
+      logout,
+    ],
   );
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider
+      value={contextValue}
+    >
       {children}
     </AuthContext.Provider>
   );
 }
 
 export function useAuth(): AuthContextValue {
-  const value = useContext(AuthContext);
+  const context = useContext(AuthContext);
 
-  if (!value) {
-    throw new Error("useAuth must be used inside AuthProvider.");
+  if (!context) {
+    throw new Error(
+      "useAuth must be used inside AuthProvider.",
+    );
   }
 
-  return value;
+  return context;
 }

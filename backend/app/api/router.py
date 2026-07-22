@@ -22,6 +22,7 @@ from backend.app.api import (
     sql_generation as sql_generation_routes,
 )
 
+from backend.app.api import auth as auth_routes
 
 api_router = APIRouter()
 
@@ -66,5 +67,10 @@ api_router.include_router(
 
 api_router.include_router(
     workflow_routes.router,
+    prefix="/v1",
+)
+
+api_router.include_router(
+    auth_routes.router,
     prefix="/v1",
 )

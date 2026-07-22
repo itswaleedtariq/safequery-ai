@@ -1,6 +1,7 @@
 import groq
 from fastapi import APIRouter, HTTPException, status
 
+from backend.app.api.dependencies import CurrentUser
 from backend.app.core.exceptions import (
     LLMConfigurationError,
     LLMResponseError,
@@ -31,10 +32,13 @@ router = APIRouter(
 )
 def process_natural_language_query(
     request: QueryWorkflowRequest,
+    _current_user: CurrentUser,
 ) -> QueryWorkflowResponse:
     """
     Generate SQL, validate it, execute it, detect hallucinations,
     calculate confidence, and return the final result.
+
+    A valid bearer token is required before the workflow executes.
     """
 
     try:
